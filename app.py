@@ -230,6 +230,27 @@ def _render_topics(topics_data: dict) -> None:
 # ------------------------------------------------------------------ #
 #  Imports
 # ------------------------------------------------------------------ #
+import re
+import numpy as np
+import plotly.express as px
+import plotly.graph_objects as go
+from PIL import Image
+from datetime import datetime
+import nltk
+
+# Initialize NLTK data for Streamlit Cloud
+@st.cache_resource
+def setup_nltk():
+    try:
+        nltk.download('punkt', quiet=True)
+        nltk.download('brown', quiet=True)
+        nltk.download('stopwords', quiet=True)
+    except Exception:
+        pass
+
+setup_nltk()
+
+from config import *
 from data.fetcher import GitHubFetcher
 from analysis.languages import aggregate_languages, radar_chart, bar_chart
 from analysis.activity import build_heatmap_data, activity_heatmap, peak_hours_summary
@@ -351,7 +372,7 @@ st.markdown("""
 
 if mode == "Single Profile":
     username = st.text_input(
-        "",
+        "GitHub Username",
         placeholder="🔍  Enter a GitHub username (e.g. torvalds, gvanrossum)",
         label_visibility="collapsed",
     )
