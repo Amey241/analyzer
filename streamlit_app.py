@@ -686,7 +686,13 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-    st.divider()
+    # Feature 12: Hidden Achievements (Always try to show some)
+    unlocked = [a for a in data.get("achievements", []) if a["unlocked"]]
+    if unlocked:
+        st.markdown('<div style="margin-top: -1rem; margin-bottom: 1.5rem; display: flex; gap: 10px; flex-wrap: wrap;">', unsafe_allow_html=True)
+        for a in unlocked:
+            st.markdown(f'<span title="{a["desc"]}" style="background: rgba(249,168,38,0.1); border: 1px solid #F9A826; color: #F9A826; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">{a["emoji"]} {a["name"]}</span>', unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)
 
     st.divider()
 
@@ -696,15 +702,13 @@ else:
         st.markdown('<div class="section-header">🎭 Commit Sentiment & Vibe</div>', unsafe_allow_html=True)
         polarity = data["sentiment"].get("avg_polarity", 0)
         mood = data["sentiment"].get("mood", "Neutral 😐")
-        
-        # Color based on sentiment
         color = "#22D3EE" if polarity > 0.1 else "#EC4899" if polarity < -0.05 else "#F9A826"
         
         fig = go.Figure(go.Indicator(
             mode = "gauge+number",
             value = polarity,
             domain = {'x': [0, 1], 'y': [0, 1]},
-            title = {'text': mood, 'font': {'size': 24, 'color': color}},
+            title = {'text': mood, 'font': {'size': 20, 'color': color}},
             gauge = {
                 'axis': {'range': [-1, 1], 'tickwidth': 1, 'tickcolor': "white"},
                 'bar': {'color': color},
@@ -718,8 +722,16 @@ else:
                 ],
             }
         ))
-        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font={'color': "white", 'family': "Arial"}, height=300, margin=dict(t=50, b=20, l=30, r=30))
+        fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font={'color': "white"}, height=250, margin=dict(t=40, b=10, l=30, r=30))
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Feature 8: Review Personality
+        rp = data.get("review_personality", {})
+        if rp.get("advice"):
+            with st.expander("🛠️ PR Review Strategy"):
+                st.markdown(f"**Archetype:** {rp.get('archetype', 'The Observer')}")
+                st.markdown(f"**Trait:** {rp.get('trait', 'Neutral')}")
+                st.info(rp.get("advice", ""))
 
     with col_e:
         st.markdown('<div class="section-header">🕸 Project Ecosystem</div>', unsafe_allow_html=True)
@@ -727,13 +739,17 @@ else:
             import streamlit.components.v1 as components
             components.html(data["ecosystem_html"], height=300)
         else:
-            st.markdown("""
-            <div class="glass-card" style="height:300px; display:flex; align-items:center; justify-content:center; text-align:center;">
-                <div style="color:#94A3B8;">Insufficient dependency data to map ecosystem.</div>
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown('<div class="glass-card" style="height:300px; display:flex; align-items:center; justify-content:center; color:#94A3B8;">Insufficient dependency data.</div>', unsafe_allow_html=True)
 
     st.divider()
+
+    # Feature 13: Ghost Repos (if any)
+    ghosts = data.get("ghosts", [])
+    if ghosts:
+        with st.expander(f"👻 Ghost Repo Audit ({len(ghosts)} inactive)"):
+            st.markdown("These repositories haven't been touched in over a year. Consider archiving or revitalizing them!")
+            for g in ghosts[:5]:
+                st.markdown(f"- **{g['name']}** (Last updated: {g['last_updated']}) — {g['stars']} ⭐")
 
     # AI Job Matcher (Feature 7)
     st.markdown('<div class="section-header">💼 AI Job Role Matcher</div>', unsafe_allow_html=True)
