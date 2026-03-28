@@ -287,17 +287,21 @@ def run_pipeline(username: str, token: str) -> dict:
         commits = raw["commits"]
         lang_df = aggregate_languages(raw["lang_totals"])
         
-        # Corrected Analytical Calls
-        heatmap_pivot, activity = commit_activity_heatmap(commits)
-        sentiment = sentiment_analysis([c["message"] for c in commits])
-        topics = lda_topics([c["message"] for c in commits])
+        # Analytical Calls (Synced with module names)
+        heatmap_pivot = build_heatmap_data(commits)
+        activity      = peak_hours_summary(heatmap_pivot)
+        sentiment     = sentiment_analysis([c["message"] for c in commits])
+        topics        = lda_topics([c["message"] for c in commits])
         
         # Wordcloud (proper arg)
         wc_path = generate_wordcloud([c["message"] for c in commits])
         
-        # Commit Quality & Repo Health
-        quality = score_commit_quality(commits)
-        repo_scores, health_stats = aggregate_repo_health(raw["repos"])
+        # Commit Quality (synced name)
+        quality = score_commits([c["message"] for c in commits])
+        
+        # Repo Health (manual loop + aggregate)
+        repo_scores = [score_repo(r) for r in raw["repos"]]
+        health_stats = aggregate_health(repo_scores)
         
         # User Stats for Personality/Narrative/Achievements
         user_stats = {
