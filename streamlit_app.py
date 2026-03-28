@@ -633,8 +633,9 @@ else:
 
     st.divider()
     
-    # Feature 1: Code DNA Fingerprint
+    # Feature 1: Code DNA Fingerprint (conditional divider)
     if data.get("dna_svg"):
+        st.divider()
         st.markdown('<div class="section-header">🧬 Code DNA Fingerprint</div>', unsafe_allow_html=True)
         col1, col2 = st.columns([1, 1.5], gap="large")
         with col1:
@@ -670,15 +671,6 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
-    st.divider()
-
-    # Feature 2 & 6: Developer Archetype & Time Capsule
-    st.markdown('<div class="section-header">📜 Developer Archetype & Story</div>', unsafe_allow_html=True)
-    st.markdown(f"""
-    <div class="glass-card" style="padding:2rem; border-left: 5px solid #F9A826;">
-        <div style="font-size:1.2rem; line-height:1.7; font-style:italic; color:#E2E8F0;">
-            "{data.get('narrative', 'Your story is still being written...')}"
-        </div>
         <div style="margin-top:1.5rem; padding:1rem; background:rgba(249,168,38,0.1); border-radius:10px; border: 1px dashed rgba(249,168,38,0.3);">
             <div style="font-size:0.8rem; color:#F9A826; font-weight:700; text-transform:uppercase;">Time Capsule Reflection</div>
             <div style="margin-top:0.5rem; color:#E2E8F0;">{data.get('capsule', 'Keep pushing commits to see your career evolution.')}</div>
@@ -694,7 +686,7 @@ else:
             st.markdown(f'<span title="{a["desc"]}" style="background: rgba(249,168,38,0.1); border: 1px solid #F9A826; color: #F9A826; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;">{a["emoji"]} {a["name"]}</span>', unsafe_allow_html=True)
         st.markdown('</div>', unsafe_allow_html=True)
 
-    st.divider()
+
 
     # Feature 8 & 5: Sentiment & Ecosystem
     col_s, col_e = st.columns([1, 1], gap="large")
