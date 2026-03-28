@@ -1,16 +1,16 @@
 """
-data/fetcher.py
-GitHub data fetcher using PyGithub with local JSON caching.
+data/fetcher.py — GitHub Data Integration
+Fetches profile, repos, and commits using PyGithub with parallel processing.
 """
 
 import os
 import json
-import time
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timezone, timedelta
 from github import Github, GithubException, RateLimitExceededException
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import CACHE_DIR, CACHE_TTL_HOURS, LDA_MAX_COMMITS
-
 
 class GitHubFetcher:
     def __init__(self, token: str):
@@ -80,54 +80,34 @@ class GitHubFetcher:
 
         repos_data = []
         all_commits = []
-        lang_totals: dict[str, int] = {}
+        lang_totals = {}
 
         try:
-            repos = list(user.get_repos(type="public"))
+            repos = sorted(list(user.get_repos(type="public")), key=lambda r: r.pushed_at, reverse=True)
         except RateLimitExceededException:
-            raise RuntimeError("GitHub rate limit exceeded. Please wait or use a different token.")
+            raise RuntimeError("GitHub rate limit exceeded.")
 
-        for index, repo in enumerate(repos):
-            if repo.fork:   # skip forks to focus on own work
-                continue
+        # Limit to top 30 repos for performance
+        target_repos = repos[:30]
 
-            # ---- language bytes ----
-            try:
-                langs = repo.get_languages()
-            except GithubException:
-                langs = {}
-            for lang, bcount in langs.items():
-                try:
-                    lang_totals[lang] = lang_totals.get(lang, 0) + int(bcount)
-                except (TypeError, ValueError):
-                    pass  # skip non-numeric entries (e.g. URL strings from some PyGithub versions)
-
-            # ---- README presence ----
-            has_readme = False
-            try:
-                repo.get_readme()
-                has_readme = True
-            except GithubException:
-                pass
-
-            # ---- commits (capped to avoid huge repos) ----
+        def process_repo(repo, index):
             repo_commits = []
-            if len(all_commits) < LDA_MAX_COMMITS:
-                try:
-                    # 1. Commits (capped)
-                    for commit in repo.get_commits(author=username)[:LDA_MAX_COMMITS]:
-                        author_info = commit.commit.author
-                        if author_info and author_info.date:
-                            ts = author_info.date
-                            repo_commits.append({
-                                "message": (commit.commit.message or "").split("\n")[0],
-                                "timestamp": str(ts),
-                                "hour": ts.hour,
-                                "weekday": ts.strftime("%A"),
-                                "year": ts.year,
-                                "repo_lang": repo.language or "Unknown"
-                            })
-                except: pass
+            try:
+                # 1. Commits (capped)
+                # Ensure we only fetch author's commits
+                commits_iter = repo.get_commits(author=username)
+                for commit in commits_iter[:LDA_MAX_COMMITS]:
+                    author_info = commit.commit.author
+                    if author_info and author_info.date:
+                        ts = author_info.date
+                        repo_commits.append({
+                            "message": (commit.commit.message or "").split("\n")[0],
+                            "timestamp": str(ts),
+                            "hour": ts.hour,
+                            "weekday": ts.strftime("%A"),
+                            "year": ts.year,
+                            "repo_lang": repo.language or "Unknown"
+                        })
                 
                 # 2. Languages
                 langs = repo.get_languages()
@@ -167,7 +147,7 @@ class GitHubFetcher:
                         "recently_active": recently_active,
                         "contributor_count": contributor_count,
                         "user_contribution_count": len(repo_commits),
-                        "commit_count": repo.get_commits().totalCount if index < 10 else len(repo_commits) # Capped for speed
+                        "commit_count": repo.get_commits().totalCount if index < 10 else len(repo_commits)
                     },
                     "commits": repo_commits,
                     "languages": langs
@@ -186,7 +166,7 @@ class GitHubFetcher:
                     for l, v in res["languages"].items():
                         lang_totals[l] = lang_totals.get(l, 0) + v
 
-        # PRs & Issues (Directly from search - fast enough)
+        # PRs & Issues (Directly from search)
         issues_authored = 0
         prs_authored = 0
         try:
