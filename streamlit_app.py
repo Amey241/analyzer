@@ -418,8 +418,24 @@ with st.sidebar:
     token = token_input or env_token
 
     st.divider()
-    mode = st.radio("Analysis Mode", ["Single Profile", "Compare Mode"], index=0)
-
+    
+    # Feature 13: Rate Limit Monitor
+    def show_rate_limit(fetcher):
+        if not fetcher: return
+        rate = fetcher.get_rate_limit()
+        if rate:
+            rem = rate['remaining']
+            total = rate['limit']
+            color = "green" if rem > 1000 else "orange" if rem > 200 else "red"
+            st.markdown(f"**API Quota:** :{color}[{rem} / {total}]")
+            st.progress(rem / total)
+            st.caption(f"Resets at: `{rate['reset']}`")
+            if rem < 100:
+                st.warning("Low API quota — analysis may be capped.")
+    
+    if 'fetcher' in locals() or 'fetcher' in globals():
+        show_rate_limit(fetcher if 'fetcher' in locals() else globals().get('fetcher'))
+    
     st.divider()
     st.markdown("**How to use**")
     st.markdown("""

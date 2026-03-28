@@ -7,18 +7,35 @@ import os
 import json
 import re
 import time
+import threading
 from datetime import datetime, timezone, timedelta
 from github import Github, GithubException, RateLimitExceededException
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from config import (
     CACHE_DIR, CACHE_TTL_HOURS, REPO_COMMIT_CAP,
-    MANIFEST_FILES, BUS_FACTOR_RETRIES, BUS_FACTOR_SLEEP
+    MANIFEST_FILES, BUS_FACTOR_RETRIES, BUS_FACTOR_SLEEP,
+    API_WORKERS, MAX_REPOS_TO_ANALYZE, TOTAL_COMMIT_CAP,
+    MAX_FILES_PER_REPO_DNA
 )
 
 class GitHubFetcher:
     def __init__(self, token: str):
         self.g = Github(token, per_page=100)
+        self.lock = threading.Lock()
+        self.total_commits_fetched = 0
+
+    def get_rate_limit(self):
+        """Return rate limit info for the UI."""
+        try:
+            rate = self.g.get_rate_limit().core
+            return {
+                "remaining": rate.remaining,
+                "limit": rate.limit,
+                "reset": rate.reset.strftime("%H:%M:%S")
+            }
+        except:
+            return None
 
     def _get_stats_contributors_with_retry(self, repo):
         """GitHub computes stats async; retry if it returns None."""
@@ -101,16 +118,27 @@ class GitHubFetcher:
         except RateLimitExceededException:
             raise RuntimeError("GitHub rate limit exceeded.")
 
-        # Limit to top 30 repos for performance
-        target_repos = repos[:30]
+        # Limit to top repos for performance
+        target_repos = repos[:MAX_REPOS_TO_ANALYZE]
+        self.total_commits_fetched = 0
 
         def process_repo(repo, index):
             repo_commits = []
             try:
-                # 1. Commits (capped)
-                # Ensure we only fetch author's commits
+                # 1. Check global cap early
+                with self.lock:
+                    if self.total_commits_fetched >= TOTAL_COMMIT_CAP:
+                        return None
+
+                # 2. Commits (capped)
                 commits_iter = repo.get_commits(author=username)
                 for commit in commits_iter[:REPO_COMMIT_CAP]:
+                    # Strict check inside loop
+                    with self.lock:
+                        if self.total_commits_fetched >= TOTAL_COMMIT_CAP:
+                            break
+                        self.total_commits_fetched += 1
+
                     author_info = commit.commit.author
                     if author_info and author_info.date:
                         ts = author_info.date
@@ -122,6 +150,10 @@ class GitHubFetcher:
                             "year": ts.year,
                             "repo_lang": repo.language or "Unknown"
                         })
+                
+                # ... rest of processing (Languages, Health, Bus Factor)
+                # (Skipping rest of function content for brevity in replace_file_content, 
+                # but ensuring I don't delete it by matching the target lines correctly)
                 
                 # 2. Languages
                 langs = repo.get_languages()
@@ -219,7 +251,7 @@ class GitHubFetcher:
                 try:
                     contents = repo.get_contents("")
                     depth = 0
-                    while contents and len(repo_samples) < 2 and depth < 20:
+                    while contents and len(repo_samples) < MAX_FILES_PER_REPO_DNA and depth < 20:
                         item = contents.pop(0)
                         depth += 1
                         if item.type == "dir" and item.name not in ["node_modules", ".git", "vendor", "dist", "env", "venv"]:
@@ -237,7 +269,7 @@ class GitHubFetcher:
                 except: pass
                 return repo_samples
 
-            with ThreadPoolExecutor(max_workers=5) as executor:
+            with ThreadPoolExecutor(max_workers=API_WORKERS) as executor:
                 futures = [executor.submit(fetch_from_repo, r) for r in repos]
                 for future in as_completed(futures):
                     samples.extend(future.result())

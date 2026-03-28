@@ -6,12 +6,15 @@ import os
 CACHE_DIR = os.path.join(os.path.dirname(__file__), "cache")
 CACHE_TTL_HOURS = 1
 
-# LDA settings
-LDA_N_TOPICS = 4
-REPO_COMMIT_CAP = 100    # cap per repo to stay fast
-TOTAL_COMMIT_CAP = 1000  # overall cap for NLP/WordCloud
+# Performance Settings
+API_WORKERS = 10
+MAX_REPOS_TO_ANALYZE = 30
+MAX_FILES_PER_REPO_DNA = 3
+REPO_COMMIT_CAP = 100
+TOTAL_COMMIT_CAP = 1000
 
-# Personality badge thresholds
+# LDA topic labels
+TOPIC_LABELS = ["bug", "feature", "refactor", "docs"]
 NIGHT_OWL_THRESHOLD = 0.25        # >25% commits between midnight and 4am
 DOC_LOVER_THRESHOLD = 0.70         # >70% repos have a README
 PROLIFIC_COMMITTER_THRESHOLD = 50  # avg commits per repo
