@@ -36,7 +36,7 @@ def sentiment_analysis(messages: list[str]) -> dict:
         return {"avg_polarity": 0.0, "mood": "Neutral 😐", "polarity_list": []}
 
     polarities = [TextBlob(m).sentiment.polarity for m in messages]
-    avg = sum(polarities) / len(polarities)
+    avg = sum(polarities) / len(polarities) if polarities else 0.0
 
     if avg > 0.15:
         mood = "Upbeat 😄"

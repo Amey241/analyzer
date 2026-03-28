@@ -144,7 +144,7 @@ def generate_narrative(user_stats: dict, profile: dict) -> str:
     
     # Sentence 1: Archetype and Volume
     night = sum(1 for h in commits if 0 <= h <= 4)
-    time_pref = "nocturnal" if night / n_commits > 0.3 else "disciplined" if n_commits > 0 else "occasional"
+    time_pref = "nocturnal" if (n_commits > 0 and night / n_commits > 0.3) else "disciplined" if n_commits > 0 else "occasional"
     
     topics = user_stats.get("dominant_topic", "general")
     archetype = {"bug": "bug hunter", "feature": "builder", "refactor": "craftsperson", "docs": "clarity seeker"}.get(topics, "developer")

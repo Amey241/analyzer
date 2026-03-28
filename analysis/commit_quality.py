@@ -132,9 +132,9 @@ def score_commits(messages: list[str]) -> dict:
     scores = [_score_message(m) for m in messages]
 
     def _avg(attr):
-        return round(sum(getattr(s, attr) for s in scores) / len(scores), 1)
+        return round(sum(getattr(s, attr) for s in scores) / len(scores), 1) if scores else 0.0
 
-    avg_total = round(sum(s.total for s in scores) / len(scores), 1)
+    avg_total = round(sum(s.total for s in scores) / len(scores), 1) if scores else 0.0
 
     if avg_total >= 85:   overall_grade = "A"
     elif avg_total >= 70: overall_grade = "B"
