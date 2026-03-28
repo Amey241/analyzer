@@ -15,7 +15,8 @@ def aggregate_languages(lang_totals: dict) -> pd.DataFrame:
 
     df = pd.DataFrame(lang_totals.items(), columns=["language", "bytes"])
     df = df.sort_values("bytes", ascending=False).reset_index(drop=True)
-    df["pct"] = df["bytes"] / df["bytes"].sum() * 100
+    total_bytes = df["bytes"].sum()
+    df["pct"] = df["bytes"] / total_bytes * 100 if total_bytes > 0 else 0
 
     # Keep top-12, group the rest as "Other"
     if len(df) > 12:
