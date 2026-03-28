@@ -729,13 +729,7 @@ else:
 
     st.divider()
 
-    # Feature 13: Ghost Repos (if any)
-    ghosts = data.get("ghosts", [])
-    if ghosts:
-        with st.expander(f"👻 Ghost Repo Audit ({len(ghosts)} inactive)"):
-            st.markdown("These repositories haven't been touched in over a year. Consider archiving or revitalizing them!")
-            for g in ghosts[:5]:
-                st.markdown(f"- **{g['name']}** (Last updated: {g['last_updated']}) — {g['stars']} ⭐")
+
 
     # AI Job Matcher (Feature 7)
     st.markdown('<div class="section-header">💼 AI Job Role Matcher</div>', unsafe_allow_html=True)
