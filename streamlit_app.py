@@ -275,8 +275,6 @@ from analysis.deep_metrics import estimate_bus_factor, calculate_streaks, invisi
 @st.cache_data(ttl=3600, show_spinner=False)
 def run_pipeline(username: str, token: str) -> dict:
     fetcher = GitHubFetcher(token)
-    raw = fetcher.get_user_data(username)
-
 
     # Pipeline Execution with Progress Tracking
     with st.status("🔍 Analyzing GitHub Profile...") as status:

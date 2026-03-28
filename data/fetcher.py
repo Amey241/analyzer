@@ -16,7 +16,7 @@ from config import (
     CACHE_DIR, CACHE_TTL_HOURS, REPO_COMMIT_CAP,
     MANIFEST_FILES, BUS_FACTOR_RETRIES, BUS_FACTOR_SLEEP,
     API_WORKERS, MAX_REPOS_TO_ANALYZE, TOTAL_COMMIT_CAP,
-    MAX_FILES_PER_REPO_DNA
+    MAX_FILES_PER_REPO_DNA, MAX_REPOS_FOR_CONTRIBUTOR_STATS
 )
 
 class GitHubFetcher:
@@ -24,6 +24,20 @@ class GitHubFetcher:
         self.g = Github(token, per_page=100)
         self.lock = threading.Lock()
         self.total_commits_fetched = 0
+
+    @staticmethod
+    def _to_int(value, default: int = 0) -> int:
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _to_float(value, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
 
     def get_rate_limit(self):
         """Return rate limit info for the UI."""
@@ -47,6 +61,23 @@ class GitHubFetcher:
             time.sleep(BUS_FACTOR_SLEEP)
         return []
 
+    def _get_recent_repos(self, user, limit: int):
+        """
+        Fetch only the most recently pushed public repos without materializing the
+        user's entire repository list.
+        """
+        repos = []
+        try:
+            repo_pages = user.get_repos(type="public", sort="pushed", direction="desc")
+        except TypeError:
+            repo_pages = user.get_repos(type="public")
+
+        for repo in repo_pages:
+            repos.append(repo)
+            if len(repos) >= limit:
+                break
+        return repos
+
     # ------------------------------------------------------------------ #
     #  Cache helpers
     # ------------------------------------------------------------------ #
@@ -64,13 +95,47 @@ class GitHubFetcher:
         age_hours = (datetime.now(timezone.utc) - cached_at.replace(tzinfo=timezone.utc)).total_seconds() / 3600
         if age_hours > CACHE_TTL_HOURS:
             return None
-        return data
+        return self._normalize_cached_data(data)
 
     def _save_cache(self, username: str, data: dict):
         path = self._cache_path(username)
         data["_cached_at"] = datetime.now(timezone.utc).isoformat()
         with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, default=str)
+
+    def _normalize_cached_data(self, data: dict) -> dict:
+        profile = data.get("profile", {})
+        for key in ("public_repos", "followers", "following"):
+            profile[key] = self._to_int(profile.get(key, 0))
+
+        normalized_repos = []
+        for repo in data.get("repos", []):
+            normalized_repo = dict(repo)
+            for key in ("stars", "forks", "commit_count", "contributor_count", "open_issues_count"):
+                normalized_repo[key] = self._to_int(normalized_repo.get(key, 0))
+            normalized_repo["user_share_all_time"] = self._to_float(normalized_repo.get("user_share_all_time", 0.0))
+            normalized_repos.append(normalized_repo)
+        data["repos"] = normalized_repos
+
+        normalized_commits = []
+        for commit in data.get("commits", []):
+            normalized_commit = dict(commit)
+            normalized_commit["hour"] = self._to_int(normalized_commit.get("hour", 0))
+            timestamp = str(normalized_commit.get("timestamp", "") or normalized_commit.get("date", ""))
+            normalized_commit["timestamp"] = timestamp
+            normalized_commit["date"] = timestamp
+            if "year" not in normalized_commit and len(timestamp) >= 4 and timestamp[:4].isdigit():
+                normalized_commit["year"] = int(timestamp[:4])
+            normalized_commits.append(normalized_commit)
+        data["commits"] = normalized_commits
+
+        data["lang_totals"] = {
+            str(lang): self._to_int(value)
+            for lang, value in data.get("lang_totals", {}).items()
+        }
+        data["issues_authored"] = self._to_int(data.get("issues_authored", 0))
+        data["prs_authored"] = self._to_int(data.get("prs_authored", 0))
+        return data
 
     # ------------------------------------------------------------------ #
     #  Public entry point
@@ -114,12 +179,10 @@ class GitHubFetcher:
         lang_totals = {}
 
         try:
-            repos = sorted(list(user.get_repos(type="public")), key=lambda r: r.pushed_at, reverse=True)
+            target_repos = self._get_recent_repos(user, MAX_REPOS_TO_ANALYZE)
         except RateLimitExceededException:
             raise RuntimeError("GitHub rate limit exceeded.")
 
-        # Limit to top repos for performance
-        target_repos = repos[:MAX_REPOS_TO_ANALYZE]
         self.total_commits_fetched = 0
 
         def process_repo(repo, index):
@@ -144,6 +207,8 @@ class GitHubFetcher:
                         repo_commits.append({
                             "message": (commit.commit.message or "").split("\n")[0],
                             "timestamp": str(ts),
+                            "date": str(ts),
+                            "year": ts.year if ts else None,
                             "hour": ts.hour if ts else 0,
                             "weekday": ts.strftime("%A") if ts else "Monday",
                             "repo_lang": repo.language or "Unknown"
@@ -192,7 +257,9 @@ class GitHubFetcher:
                     recently_active = (datetime.now(timezone.utc) - repo.pushed_at.replace(tzinfo=timezone.utc)).days < 90
 
                 # 4. Bus Factor & Issues
-                total_stats = self._get_stats_contributors_with_retry(repo)
+                total_stats = []
+                if index < MAX_REPOS_FOR_CONTRIBUTOR_STATS:
+                    total_stats = self._get_stats_contributors_with_retry(repo)
                 user_share = 0
                 if total_stats:
                     total_commits_all = sum(c.total for c in total_stats)
@@ -270,7 +337,7 @@ class GitHubFetcher:
         samples = []
         try:
             user = self.g.get_user(username)
-            repos = sorted(user.get_repos(type="public"), key=lambda r: r.pushed_at, reverse=True)[:5]
+            repos = self._get_recent_repos(user, 5)
             
             def fetch_from_repo(repo):
                 repo_samples = []
@@ -327,7 +394,7 @@ class GitHubFetcher:
         repo_deps = {}
         try:
             user = self.g.get_user(username)
-            repos = sorted(user.get_repos(type="public"), key=lambda r: r.pushed_at, reverse=True)[:15]
+            repos = self._get_recent_repos(user, 15)
             
             def fetch_deps(repo):
                 deps = []

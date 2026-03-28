@@ -3,6 +3,12 @@ analysis/repo_health.py
 Compute per-repo and aggregate health scores from already-fetched repo data.
 """
 
+def _to_int(value, default=0):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
+
 
 HEALTH_MAX = 100
 
@@ -59,10 +65,10 @@ def score_repo(repo: dict) -> dict:
         "emoji": emoji,
         "label": label,
         "signals": signals,
-        "stars":  repo.get("stars", 0),
-        "forks":  repo.get("forks", 0),
+        "stars": _to_int(repo.get("stars", 0)),
+        "forks": _to_int(repo.get("forks", 0)),
         "language": repo.get("language", "Unknown"),
-        "commit_count": repo.get("commit_count", 0),
+        "commit_count": _to_int(repo.get("commit_count", 0)),
         "has_readme": signals["has_readme"],
     }
 
@@ -72,7 +78,7 @@ def aggregate_health(repo_scores: list[dict]) -> dict:
     if not repo_scores:
         return {"maintainer_score": 0, "label": "No repos", "emoji": "❓", "grade": "N/A"}
 
-    avg = sum(r["score"] for r in repo_scores) / len(repo_scores)
+    avg = sum(_to_int(r.get("score", 0)) for r in repo_scores) / len(repo_scores)
     grade = calculate_grade(avg)
 
     if avg >= 75:
@@ -84,9 +90,9 @@ def aggregate_health(repo_scores: list[dict]) -> dict:
     else:
         label, emoji = "Needs Improvement", "⚠️"
 
-    healthy   = sum(1 for r in repo_scores if r["score"] >= 80)
-    needs_work = sum(1 for r in repo_scores if 50 <= r["score"] < 80)
-    abandoned  = sum(1 for r in repo_scores if r["score"] < 50)
+    healthy   = sum(1 for r in repo_scores if _to_int(r.get("score", 0)) >= 80)
+    needs_work = sum(1 for r in repo_scores if 50 <= _to_int(r.get("score", 0)) < 80)
+    abandoned  = sum(1 for r in repo_scores if _to_int(r.get("score", 0)) < 50)
 
     return {
         "maintainer_score": round(avg),

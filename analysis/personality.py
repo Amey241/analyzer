@@ -3,6 +3,12 @@ analysis/personality.py
 Rule-based personality badge classifier.
 """
 
+def _to_number(value, default=0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
 from config import (
     NIGHT_OWL_THRESHOLD,
     DOC_LOVER_THRESHOLD,
@@ -76,7 +82,7 @@ def classify(user_stats: dict) -> list[dict]:
 
     # ---- Prolific Committer ----
     if n_repos > 0:
-        avg_commits = sum(r.get("commit_count", 0) for r in repos) / n_repos
+        avg_commits = sum(_to_number(r.get("commit_count", 0), 0) for r in repos) / n_repos
         if avg_commits > PROLIFIC_COMMITTER_THRESHOLD:
             badges.append({
                 "badge": "🔥 Prolific Committer",

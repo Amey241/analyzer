@@ -19,6 +19,8 @@ def build_heatmap_data(commits: list[dict]) -> pd.DataFrame:
         return pd.DataFrame()
 
     df = pd.DataFrame(commits)
+    df["hour"] = pd.to_numeric(df.get("hour"), errors="coerce").fillna(0).astype(int)
+    df["weekday"] = df.get("weekday", "Monday").astype(str)
     df["weekday"] = pd.Categorical(df["weekday"], categories=WEEKDAY_ORDER, ordered=True)
     pivot = (
         df.groupby(["weekday", "hour"])
@@ -31,6 +33,7 @@ def build_heatmap_data(commits: list[dict]) -> pd.DataFrame:
         if h not in pivot.columns:
             pivot[h] = 0
     pivot = pivot[sorted(pivot.columns)]
+    pivot = pivot.apply(pd.to_numeric, errors="coerce").fillna(0).astype(int)
     return pivot
 
 

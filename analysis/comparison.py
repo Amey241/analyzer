@@ -28,8 +28,8 @@ def overlay_radar(df_a: pd.DataFrame, df_b: pd.DataFrame,
             fill="toself",
             fillcolor=fillcolor,
             line=dict(color=color, width=2),
-            name=name,
-            hovertemplate="%{theta}: %{r:.1f}%<extra>" + name + "</extra>",
+            name=str(name),
+            hovertemplate="%{theta}: %{r:.1f}%<extra>" + str(name) + "</extra>",
         ))
 
     _add_trace(df_a, name_a, "#6C63FF", "rgba(108,99,255,0.15)")

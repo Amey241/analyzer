@@ -14,6 +14,7 @@ def aggregate_languages(lang_totals: dict) -> pd.DataFrame:
         return pd.DataFrame(columns=["language", "bytes", "pct"])
 
     df = pd.DataFrame(lang_totals.items(), columns=["language", "bytes"])
+    df["bytes"] = pd.to_numeric(df["bytes"], errors="coerce").fillna(0)
     df = df.sort_values("bytes", ascending=False).reset_index(drop=True)
     total_bytes = df["bytes"].sum()
     df["pct"] = df["bytes"] / total_bytes * 100 if total_bytes > 0 else 0

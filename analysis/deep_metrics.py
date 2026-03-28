@@ -6,6 +6,12 @@ Advanced data metrics like Bus Factor, Invisible Work, and Streak Intelligence.
 from datetime import datetime, timedelta
 import pandas as pd
 
+def _to_number(value, default=0):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return default
+
 def estimate_bus_factor(repos: list[dict]) -> dict:
     """
     Estimate the 'Bus Factor' (risk of project knowledge being centralized).
@@ -13,8 +19,8 @@ def estimate_bus_factor(repos: list[dict]) -> dict:
     factors = []
     for r in repos:
         # Use full-history share if available (provided by fetcher)
-        user_share = r.get("user_share_all_time", 0)
-        n_contribs = max(r.get("contributor_count", 1), 1)
+        user_share = _to_number(r.get("user_share_all_time", 0), 0)
+        n_contribs = max(int(_to_number(r.get("contributor_count", 1), 1)), 1)
         
         # Heuristic for project sustainability:
         # If one person does 80%+ work (all time), factor is 1 (high risk)
@@ -86,11 +92,14 @@ def invisible_work_audit(user_data: dict) -> dict:
     """
     Highlight PR reviews, issues, and discussions.
     """
+    prs = int(_to_number(user_data.get("prs_authored", 0), 0))
+    issues = int(_to_number(user_data.get("issues_authored", 0), 0))
+    reviews = len(user_data.get("review_comments") or [])
     return {
-        "prs": user_data.get("prs_authored", 0),
-        "issues": user_data.get("issues_authored", 0),
-        "reviews": len(user_data.get("review_comments", [])),
-        "total_impact": user_data.get("prs_authored", 0) + user_data.get("issues_authored", 0) + len(user_data.get("review_comments", []))
+        "prs": prs,
+        "issues": issues,
+        "reviews": reviews,
+        "total_impact": prs + issues + reviews
     }
 
 def ghost_repo_audit(repos: list[dict]) -> list:
