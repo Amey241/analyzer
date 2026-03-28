@@ -777,31 +777,7 @@ else:
         if not heatmap_pivot.empty:
             st.plotly_chart(activity_heatmap(heatmap_pivot), use_container_width=True)
 
-    st.divider()
 
-    # Code DNA Fingerprint (Feature 1)
-    col_dna_l, col_dna_r = st.columns([1, 1.2])
-    with col_dna_l:
-        st.markdown('<div class="section-header">🧬 Code DNA Fingerprint</div>', unsafe_allow_html=True)
-        st.write("Unique stylistic patterns extracted from your source files.")
-        traits = data["dna_traits"]
-        if traits:
-            st.markdown(f"**Naming**: `{traits['naming']}`")
-            st.markdown(f"**Braces**: `{traits['brace_style'].replace('_', ' ')}`")
-            st.markdown(f"**Indent**: `{traits['indent']}`")
-            st.info(f"💡 Most developers in your field use {traits['naming']}, but your comment density is {traits['comment_density']:.1f}%, which is higher than 70% of peers.")
-    with col_dna_r:
-        if data["dna_svg"]:
-            st.components.v1.html(data["dna_svg"], height=520, scrolling=False)
-
-    st.divider()
-
-    # Dependency Ecosystem Map (Feature 10)
-    st.markdown('<div class="section-header">🕸 Dependency Ecosystem Map</div>', unsafe_allow_html=True)
-    if data["ecosystem_html"]:
-        st.components.v1.html(data["ecosystem_html"], height=520, scrolling=False)
-    else:
-        st.info("No manifest files (requirements.txt, package.json, etc.) found to build the ecosystem map.")
 
     # WordCloud & NLP & Quality
     col_wc, col_nlp = st.columns([1.1, 1], gap="large")
@@ -836,34 +812,7 @@ else:
                         </div>
                         """, unsafe_allow_html=True)
 
-    with col_nlp:
-        st.markdown('<div class="section-header">🧠 NLP Insights</div>', unsafe_allow_html=True)
-        # Sentiment gauge
-        polarity = sentiment["avg_polarity"]
-        mood = sentiment["mood"]
-        pct = int((polarity + 1) / 2 * 100)
-        st.markdown(f"""
-        <div class="glass-card">
-          <div style="font-weight:600;color:#CBD5E1;margin-bottom:0.3rem;">😊 Commit Sentiment</div>
-          <div class="sentiment-bar-wrap"><div class="sentiment-bar" style="width:{pct}%;background:linear-gradient(90deg,#6C63FF,#EC4899);"></div></div>
-          <div style="font-size:1.1rem;font-weight:700;color:#FFFFFF;">{mood} <span style="font-size:0.8rem;font-weight:normal;color:#CBD5E1;">({polarity:+.2f})</span></div>
-        </div>
-        """, unsafe_allow_html=True)
-        _render_topics(topics)
-        
-        # AI REVIEW PERSONALITY (Feature 6)
-        st.markdown('<div class="section-header" style="margin-top:1.5rem;">🎭 Review Personality</div>', unsafe_allow_html=True)
-        rp = data["review_personality"]
-        st.markdown(f"""
-        <div class="glass-card">
-          <div style="font-size:0.8rem; color:#CBD5E1;">ARCHETYPE</div>
-          <div style="font-size:1.4rem; font-weight:700; color:#F9A826;">{rp['archetype']}</div>
-          <div style="font-size:0.9rem; color:#FFFFFF; margin-top:0.4rem;"><b>Trait:</b> {rp['trait']}</div>
-          <div style="font-size:0.85rem; color:#E2E8F0; margin-top:0.8rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:0.5rem;">
-            <b>AI Advice:</b> {rp['advice']}
-          </div>
-        </div>
-        """, unsafe_allow_html=True)
+
 
     # REPO HEALTH DASHBOARD
     st.divider()
@@ -925,31 +874,9 @@ else:
         </div>
         """, unsafe_allow_html=True)
 
-    with col_ghost:
-        st.markdown('<div class="section-header">👻 Ghost Repo Audit</div>', unsafe_allow_html=True)
-        if data["ghosts"]:
-            for g in data["ghosts"][:3]:
-                st.markdown(f"""
-                <div style="display:flex; justify-content:space-between; padding:0.6rem; border-bottom:1px solid rgba(255,255,255,0.05);">
-                  <div style="font-size:0.85rem; font-weight:600; color:#FFFFFF;">{g['name']}</div>
-                  <div style="font-size:0.75rem; color:#94A3B8;">Last active: {g['last_updated']}</div>
-                </div>
-                """, unsafe_allow_html=True)
-            st.warning("Found repositories with no activity for 1+ year. Consider archiving them.")
-        else:
-            st.success("All analyzed repositories have been active within the last year!")
 
-    st.divider()
 
-    # Time Capsule (Feature 13)
-    st.markdown(f"""
-    <div class="glass-card" style="border: 1px solid rgba(168,85,247,0.4); background: linear-gradient(135deg, rgba(168,85,247,0.1), rgba(108,99,255,0.05));">
-      <div style="font-size:0.75rem; color:#A855F7; font-weight:700; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:0.5rem;">🎞️ Time Capsule Message</div>
-      <div style="font-size:1.2rem; font-weight:600; color:#FFFFFF; line-height:1.5; font-style:italic;">
-        "{data['capsule']}"
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+
 
     # ------------------------------------------------------------------ #
     #  Footer
