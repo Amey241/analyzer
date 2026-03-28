@@ -84,6 +84,9 @@ def lda_topics(messages: list[str], n_topics: int = LDA_N_TOPICS) -> dict:
         return {"topics": [], "dominant_topic": "unknown", "doc_topics": [], "topic_counts": {}}
 
     actual_n = min(n_topics, X.shape[1])
+    if actual_n == 0:
+        return {"topics": [], "dominant_topic": "unknown", "doc_topics": [], "topic_counts": {}}
+        
     lda = LatentDirichletAllocation(n_components=actual_n, random_state=42, max_iter=20)
     lda.fit(X)
 
