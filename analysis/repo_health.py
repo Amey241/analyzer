@@ -17,13 +17,21 @@ WEIGHTS = {
 }
 
 
+def calculate_grade(score: float) -> str:
+    """Map numeric score (0-100) to a letter grade."""
+    if not isinstance(score, (int, float)) or score < 0:
+        return "N/A"
+    if score >= 90: return "A+"
+    if score >= 75: return "A"
+    if score >= 60: return "B"
+    if score >= 40: return "C"
+    if score >= 20: return "D"
+    return "F"
+
+
 def score_repo(repo: dict) -> dict:
     """
     Score a single repo dict (as returned by fetcher).
-    Extended fields (has_ci, has_tests, has_license, open_issues,
-    days_since_commit) may or may not be present — defaults to 0/False.
-
-    Returns a dict with per-signal booleans and numeric score.
     """
     signals = {
         "has_readme":      bool(repo.get("has_readme", False)),
@@ -35,6 +43,7 @@ def score_repo(repo: dict) -> dict:
     }
 
     total = sum(WEIGHTS[k] for k, v in signals.items() if v)
+    grade = calculate_grade(total)
 
     if total >= 80:
         emoji, label = "🟢", "Healthy"
@@ -46,6 +55,7 @@ def score_repo(repo: dict) -> dict:
     return {
         "name": repo.get("name", ""),
         "score": total,
+        "grade": grade,
         "emoji": emoji,
         "label": label,
         "signals": signals,
@@ -60,9 +70,10 @@ def score_repo(repo: dict) -> dict:
 def aggregate_health(repo_scores: list[dict]) -> dict:
     """Compute an overall maintainer health score across all repos."""
     if not repo_scores:
-        return {"maintainer_score": 0, "label": "No repos", "emoji": "❓"}
+        return {"maintainer_score": 0, "label": "No repos", "emoji": "❓", "grade": "N/A"}
 
     avg = sum(r["score"] for r in repo_scores) / len(repo_scores)
+    grade = calculate_grade(avg)
 
     if avg >= 75:
         label, emoji = "Excellent Maintainer", "🏆"
@@ -79,6 +90,7 @@ def aggregate_health(repo_scores: list[dict]) -> dict:
 
     return {
         "maintainer_score": round(avg),
+        "grade": grade,
         "label": label,
         "emoji": emoji,
         "healthy_count": healthy,

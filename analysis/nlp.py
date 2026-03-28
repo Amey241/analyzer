@@ -31,12 +31,26 @@ def _clean(msg: str) -> str:
 
 
 def sentiment_analysis(messages: list[str]) -> dict:
-    """Return avg polarity and an emoji mood label."""
+    """Return avg polarity, mood label, and percentage breakdowns."""
     if not messages:
-        return {"avg_polarity": 0.0, "mood": "Neutral 😐", "polarity_list": []}
+        return {
+            "avg_polarity": 0.0,
+            "mood": "Neutral 😐",
+            "pos_pct": 0,
+            "neg_pct": 0,
+            "neu_pct": 100,
+            "total": 0
+        }
 
-    polarities = [TextBlob(m).sentiment.polarity for m in messages]
-    avg = sum(polarities) / len(polarities) if polarities else 0.0
+    polarities = [TextBlob(m).sentiment.polarity for m in messages if m.strip()]
+    if not polarities:
+        return {"avg_polarity": 0.0, "mood": "Neutral 😐", "pos_pct": 0, "neg_pct": 0, "neu_pct": 100, "total": 0}
+
+    avg = sum(polarities) / len(polarities)
+    
+    pos = sum(1 for p in polarities if p > 0.1)
+    neg = sum(1 for p in polarities if p < -0.1)
+    neu = len(polarities) - pos - neg
 
     if avg > 0.15:
         mood = "Upbeat 😄"
@@ -45,7 +59,14 @@ def sentiment_analysis(messages: list[str]) -> dict:
     else:
         mood = "Neutral 😐"
 
-    return {"avg_polarity": round(avg, 4), "mood": mood, "polarity_list": polarities}
+    return {
+        "avg_polarity": round(avg, 4),
+        "mood": mood,
+        "pos_pct": round(pos / len(polarities) * 100),
+        "neg_pct": round(neg / len(polarities) * 100),
+        "neu_pct": round(neu / len(polarities) * 100),
+        "total": len(polarities)
+    }
 
 
 def _label_topic(topic_word_weights: list, feature_names: list[str]) -> str:

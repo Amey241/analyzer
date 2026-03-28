@@ -82,6 +82,7 @@ def analyze_style(samples: list[dict]) -> dict:
         "naming": "snake_case" if snake_cases >= camel_cases else "camelCase",
         "indent": "spaces" if spaces >= tabs else "tabs",
         "avg_func_len": (func_total_lines / func_counts) if func_counts else 15,
+        "enough_data": len(samples) >= 3
     }
 
 def generate_dna_svg(traits: dict) -> str:

@@ -640,7 +640,7 @@ else:
     # Feature 1: Code DNA Fingerprint (Always show for discovery)
     st.divider()
     st.markdown('<div class="section-header">🧬 Code DNA Fingerprint</div>', unsafe_allow_html=True)
-    if data.get("dna_svg"):
+    if data.get("dna_traits", {}).get("enough_data", False):
         col1, col2 = st.columns([1, 1.5], gap="large")
         with col1:
             st.markdown(f'<div style="text-align:center; background: rgba(255,255,255,0.03); border-radius:30px; padding:20px;">{data["dna_svg"]}</div>', unsafe_allow_html=True)
@@ -674,7 +674,7 @@ else:
             </div>
             """, unsafe_allow_html=True)
     else:
-        st.info("🧬 Analyzing your coding fingerprint... Please ensure your repositories have public source files (.py, .js, .ts, etc.) for a deep style audit.")
+        st.info("🧬 **DNA Analysis: Insufficient Data.** This section requires at least 3 scannable code files across your public repositories to build a reliable coding fingerprint.")
 
 
     # Feature 12: Hidden Achievements (Always try to show some)
@@ -715,6 +715,16 @@ else:
         ))
         fig.update_layout(paper_bgcolor="rgba(0,0,0,0)", font={'color': "white"}, height=250, margin=dict(t=40, b=10, l=30, r=30))
         st.plotly_chart(fig, use_container_width=True)
+        
+        # Sentiment Breakdown Pct
+        s = data["sentiment"]
+        st.markdown(f"""
+        <div style="display:flex; justify-content:space-between; margin-top:-1rem; margin-bottom:1rem; padding:0 10px;">
+            <div style="color:#22D3EE; font-size:0.75rem;">Positive: {s.get('pos_pct', 0)}%</div>
+            <div style="color:#F9A826; font-size:0.75rem;">Neutral: {s.get('neu_pct', 0)}%</div>
+            <div style="color:#EC4899; font-size:0.75rem;">Negative: {s.get('neg_pct', 0)}%</div>
+        </div>
+        """, unsafe_allow_html=True)
         
         # Feature 8: Review Personality
         rp = data.get("review_personality", {})
@@ -815,7 +825,7 @@ else:
 
     # REPO HEALTH DASHBOARD
     st.divider()
-    st.markdown(f'<div class="section-header">📦 Repo Health Dashboard <span style="font-size:0.8rem; font-weight:normal; color:#64748B;">({health_stats["emoji"]} {health_stats["label"]}: {health_stats["maintainer_score"]}/100)</span></div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="section-header">📦 Repo Health Dashboard <span style="font-size:0.8rem; font-weight:normal; color:#64748B;">({health_stats["emoji"]} {health_stats["label"]}: {health_stats["maintainer_score"]}/100 | Grade: {health_stats.get("grade", "N/A")})</span></div>', unsafe_allow_html=True)
     
     health_cols = st.columns(3, gap="medium")
     sorted_health = sorted(repo_scores, key=lambda r: r["stars"], reverse=True)[:6]
