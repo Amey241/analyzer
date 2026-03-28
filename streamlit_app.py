@@ -34,8 +34,9 @@ st.markdown("""
   }
 
   section[data-testid="stSidebar"] {
-    background: rgba(255,255,255,0.04) !important;
-    border-right: 1px solid rgba(255,255,255,0.08);
+    background: #1a1040 !important;
+    border-right: 1px solid rgba(255,255,255,0.15);
+    backdrop-filter: blur(20px);
   }
 
   .glass-card {
