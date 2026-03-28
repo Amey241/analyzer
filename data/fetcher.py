@@ -10,7 +10,7 @@ from datetime import datetime, timezone, timedelta
 from github import Github, GithubException, RateLimitExceededException
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from config import CACHE_DIR, CACHE_TTL_HOURS, LDA_MAX_COMMITS
+from config import CACHE_DIR, CACHE_TTL_HOURS, REPO_COMMIT_CAP
 
 class GitHubFetcher:
     def __init__(self, token: str):
