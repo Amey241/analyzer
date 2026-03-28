@@ -13,8 +13,11 @@ MAX_FILES_PER_REPO_DNA = 3
 REPO_COMMIT_CAP = 100
 TOTAL_COMMIT_CAP = 1000
 
-# LDA topic labels
+# LDA settings
+LDA_N_TOPICS = 4
 TOPIC_LABELS = ["bug", "feature", "refactor", "docs"]
+
+# Personality badge thresholds
 NIGHT_OWL_THRESHOLD = 0.25        # >25% commits between midnight and 4am
 DOC_LOVER_THRESHOLD = 0.70         # >70% repos have a README
 PROLIFIC_COMMITTER_THRESHOLD = 50  # avg commits per repo
@@ -30,9 +33,6 @@ MANIFEST_FILES = [
 # Bus Factor Stats settings
 BUS_FACTOR_RETRIES = 3
 BUS_FACTOR_SLEEP = 2
-
-# LDA topic labels
-TOPIC_LABELS = ["bug", "feature", "refactor", "docs"]
 
 # Colors
 ACCENT_COLORS = [
