@@ -318,17 +318,17 @@ def run_pipeline(username: str, token: str) -> dict:
         narrative = generate_narrative(user_stats, raw["profile"])
         achievements = achievement_trophy_case(user_stats, raw["profile"], lang_df)
 
-        status.update(label="🧬 Running Deep Style Audit & Code DNA...", state="running")
+        # Deep Style Audit & Code DNA (Extracted from unified fetch)
         try:
-            code_samples = fetcher.get_code_samples(username)
+            code_samples = raw.get("all_samples", [])
             dna_traits = analyze_style(code_samples)
             dna_svg = generate_dna_svg(dna_traits)
         except Exception:
             dna_traits, dna_svg = {}, ""
 
-        status.update(label="🧠 Analyzing Collaboration & Ecosystem...", state="running")
+        # Collaboration & Ecosystem (Extracted from unified fetch)
         try:
-            repo_deps = fetcher.get_dependencies(username)
+            repo_deps = raw.get("all_deps", {})
             ecosystem_html = build_ecosystem_graph(repo_deps)
         except Exception:
             repo_deps, ecosystem_html = {}, ""

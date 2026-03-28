@@ -124,67 +124,85 @@ class GitHubFetcher:
 
         def process_repo(repo, index):
             repo_commits = []
+            repo_samples = []
+            repo_deps = []
             try:
-                # 1. Check global cap early
+                # 1. Check global cap
                 with self.lock:
                     if self.total_commits_fetched >= TOTAL_COMMIT_CAP:
                         return None
 
-                # 2. Commits (capped)
+                # 2. Commits (author specific, capped)
                 commits_iter = repo.get_commits(author=username)
                 for commit in commits_iter[:REPO_COMMIT_CAP]:
-                    # Strict check inside loop
                     with self.lock:
                         if self.total_commits_fetched >= TOTAL_COMMIT_CAP:
                             break
                         self.total_commits_fetched += 1
+                    
+                    ts = commit.commit.author.date
+                    repo_commits.append({
+                        "message": (commit.commit.message or "").split("\n")[0],
+                        "timestamp": str(ts),
+                        "hour": ts.hour if ts else 0,
+                        "weekday": ts.strftime("%A") if ts else "Monday",
+                        "repo_lang": repo.language or "Unknown"
+                    })
 
-                    author_info = commit.commit.author
-                    if author_info and author_info.date:
-                        ts = author_info.date
-                        repo_commits.append({
-                            "message": (commit.commit.message or "").split("\n")[0],
-                            "timestamp": str(ts),
-                            "hour": ts.hour,
-                            "weekday": ts.strftime("%A"),
-                            "year": ts.year,
-                            "repo_lang": repo.language or "Unknown"
-                        })
-                
-                # ... rest of processing (Languages, Health, Bus Factor)
-                # (Skipping rest of function content for brevity in replace_file_content, 
-                # but ensuring I don't delete it by matching the target lines correctly)
-                
-                # 2. Languages
+                # 3. Languages & Basic Stats
                 langs = repo.get_languages()
                 
-                # 3. Health Signals
-                has_readme = False
-                try: repo.get_contents("README.md"); has_readme = True
+                # 4. SINGLE-PASS CONTENT PEEK (Eliminates recursion)
+                # We do ONE root call to find Readme, License, CI, DNA samples, and Manifests
+                root_files = []
+                try: 
+                    root_files = repo.get_contents("")
                 except: pass
+
+                has_readme = any(f.name.lower().startswith("readme") for f in root_files)
+                has_license = any(f.name.lower().startswith("license") for f in root_files)
+                has_ci = any(f.name == ".github" for f in root_files) # Close enough for speed
                 
-                has_license = False
-                try: repo.get_license(); has_license = True
-                except: pass
-                
-                has_ci = False
-                if index < 15:
-                    try: repo.get_contents(".github/workflows"); has_ci = True
-                    except: pass
-                
+                # Extract DNA Samples & Manifests from root
+                code_exts = [".py", ".js", ".ts", ".java", ".cpp", ".go", ".rs", ".rb", ".php"]
+                for f in root_files:
+                    if f.type == "file":
+                        # DNA
+                        if len(repo_samples) < MAX_FILES_PER_REPO_DNA:
+                            if any(f.name.endswith(ext) for ext in code_exts):
+                                try:
+                                    repo_samples.append({
+                                        "repo": repo.name,
+                                        "path": f.path,
+                                        "content": f.decoded_content.decode("utf-8"),
+                                        "lang": repo.language
+                                    })
+                                except: pass
+                        # Manifests
+                        if f.name in MANIFEST_FILES:
+                            try:
+                                content = f.decoded_content.decode("utf-8")
+                                if f.name == "package.json":
+                                    js = json.loads(content)
+                                    repo_deps.extend(js.get("dependencies", {}).keys())
+                                elif f.name == "requirements.txt":
+                                    repo_deps.extend(re.findall(r"^([a-zA-Z0-9\-_]+)", content, re.MULTILINE))
+                                else:
+                                    repo_deps.extend(re.findall(r"['\"]([^'\"]+)['\"]", content))
+                            except: pass
+
                 recently_active = False
                 if repo.pushed_at:
                     recently_active = (datetime.now(timezone.utc) - repo.pushed_at.replace(tzinfo=timezone.utc)).days < 90
 
-                # 4. Bus Factor Data (High accuracy)
+                # 5. Bus Factor
                 total_stats = self._get_stats_contributors_with_retry(repo)
-                user_share_all_time = 0
+                user_share = 0
                 if total_stats:
                     total_commits_all = sum(c.total for c in total_stats)
                     if total_commits_all > 0:
                         user_stat = next((c for c in total_stats if c.author and c.author.login == username), None)
-                        if user_stat:
-                            user_share_all_time = (user_stat.total / total_commits_all) * 100
+                        if user_stat: user_share = (user_stat.total / total_commits_all) * 100
 
                 return {
                     "repo_data": {
@@ -197,25 +215,34 @@ class GitHubFetcher:
                         "has_license": has_license,
                         "has_ci": has_ci,
                         "recently_active": recently_active,
-                        "contributor_count": contributor_count,
-                        "user_contribution_count": len(repo_commits),
-                        "user_share_all_time": user_share_all_time,
-                        "commit_count": repo.get_commits().totalCount if index < 10 else len(repo_commits)
+                        "user_share_all_time": user_share,
+                        "commit_count": len(repo_commits)
                     },
                     "commits": repo_commits,
-                    "languages": langs
+                    "languages": langs,
+                    "samples": repo_samples,
+                    "deps": repo_deps
                 }
             except:
                 return None
 
+        repos_data = []
+        all_commits = []
+        all_samples = []
+        all_deps = {}
+        lang_totals = {}
+
         # Parallelize repo processing
-        with ThreadPoolExecutor(max_workers=10) as executor:
+        with ThreadPoolExecutor(max_workers=API_WORKERS) as executor:
             futures = [executor.submit(process_repo, r, i) for i, r in enumerate(target_repos)]
             for future in as_completed(futures):
                 res = future.result()
                 if res:
                     repos_data.append(res["repo_data"])
                     all_commits.extend(res["commits"])
+                    all_samples.extend(res["samples"])
+                    if res["deps"]:
+                        all_deps[res["repo_data"]["name"]] = res["deps"]
                     for l, v in res["languages"].items():
                         lang_totals[l] = lang_totals.get(l, 0) + v
 
@@ -236,6 +263,8 @@ class GitHubFetcher:
             "lang_totals": lang_totals,
             "issues_authored": issues_authored,
             "prs_authored": prs_authored,
+            "all_samples": all_samples,
+            "all_deps": all_deps
         }
 
     def get_code_samples(self, username: str, limit: int = 5) -> list:
