@@ -430,6 +430,13 @@ with st.sidebar:
 
     configured_token = get_configured_github_token()
     if configured_token:
+        st.text_input(
+            "GitHub Personal Access Token",
+            value="************",
+            type="password",
+            disabled=True,
+            help="The deployment is using a server-side token. Its real value is hidden from users.",
+        )
         token = ""
     else:
         token_input = st.text_input(
@@ -513,8 +520,10 @@ else:
         u2 = st.text_input("Second Developer", placeholder="e.g. gvanrossum")
     username = (u1, u2) if (u1 and u2) else None
 
-if not token:
-    st.warning("⚠️ Please add your GitHub Personal Access Token in the sidebar.")
+active_token = configured_token or token
+
+if not active_token:
+    st.warning("⚠️ Please add a GitHub Personal Access Token to continue.")
     st.stop()
 
 if not username:
