@@ -265,6 +265,8 @@ from analysis.repo_health import score_repo, aggregate_health
 from analysis.career_arc import analyze_career_arc, career_arc_timeline
 from analysis.code_dna import analyze_style, generate_dna_svg
 from analysis.ecosystem import build_ecosystem_graph
+from analysis.ai_insights import AIInsights
+from analysis.deep_metrics import estimate_bus_factor, calculate_streaks, invisible_work_audit, ghost_repo_audit
 
 
 # ------------------------------------------------------------------ #
@@ -322,6 +324,26 @@ def run_pipeline(username: str, token: str) -> dict:
     repo_deps = fetcher.get_dependencies(username)
     ecosystem_html = build_ecosystem_graph(repo_deps)
 
+    # AI Insights
+    ai = AIInsights()
+    job_roles = ai.get_job_role_suggestions(user_stats, lang_df)
+    
+    review_comments = fetcher.get_review_comments(username)
+    review_personality = ai.analyze_review_personality(review_comments)
+    
+    low_q_commits = [c["message"] for c in quality["low_score_commits"][:3]]
+    rewrites = ai.suggest_commit_rewrites(low_q_commits)
+
+    # Deep Metrics
+    bus_stats = estimate_bus_factor(raw["repos"])
+    streak_stats = calculate_streaks(commits)
+    invisible_stats = invisible_work_audit({
+        "prs_authored": raw["prs_authored"],
+        "issues_authored": raw["issues_authored"],
+        "review_comments": review_comments
+    })
+    ghosts = ghost_repo_audit(raw["repos"])
+
     return {
         "profile": raw["profile"],
         "repos": raw["repos"],
@@ -345,6 +367,13 @@ def run_pipeline(username: str, token: str) -> dict:
         "narrative": narrative,
         "achievements": achievements,
         "capsule": capsule,
+        "job_roles": job_roles,
+        "review_personality": review_personality,
+        "rewrites": rewrites,
+        "bus_stats": bus_stats,
+        "streak_stats": streak_stats,
+        "invisible_stats": invisible_stats,
+        "ghosts": ghosts,
     }
 
 
@@ -544,6 +573,20 @@ else:
               <span class="stat-pill">👥 {profile['followers']} followers</span>
               <span class="stat-pill">💬 {len(commits)} commits analysed</span>
             </div>
+            <div style="display:flex; gap:1.5rem; margin-top:0.8rem;">
+               <div style="text-align:center;">
+                 <div style="font-size:1.2rem; font-weight:800; color:#EC4899;">{data['streak_stats']['current']}</div>
+                 <div style="font-size:0.65rem; color:#CBD5E1; text-transform:uppercase;">Current Streak</div>
+               </div>
+               <div style="text-align:center;">
+                 <div style="font-size:1.2rem; font-weight:800; color:#6C63FF;">{data['streak_stats']['longest']}</div>
+                 <div style="font-size:0.65rem; color:#CBD5E1; text-transform:uppercase;">Longest Streak</div>
+               </div>
+               <div style="text-align:center;">
+                 <div style="font-size:1.2rem; font-weight:800; color:#22D3EE;">{data['invisible_stats']['total_impact']}</div>
+                 <div style="font-size:0.65rem; color:#CBD5E1; text-transform:uppercase;">Community Impact</div>
+               </div>
+            </div>
           </div>
         </div>
         """, unsafe_allow_html=True)
@@ -574,6 +617,36 @@ else:
 
     st.divider()
     
+    # Achievements Trophy Case (Feature 12)
+    unlocked = [a for a in data["achievements"] if a["unlocked"]]
+    if unlocked:
+        st.markdown('<div class="section-header" style="margin-top:1.5rem;">🏆 Hidden Achievements</div>', unsafe_allow_html=True)
+        ach_cols = st.columns(len(unlocked))
+        for i, a in enumerate(unlocked):
+            with ach_cols[i]:
+                st.markdown(f"""
+                <div class="badge-card" style="text-align:center; border-color:#F9A826;">
+                  <div style="font-size:2rem;">{a['emoji']}</div>
+                  <div style="font-weight:700; color:#F9A826;">{a['name']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+
+    st.divider()
+
+    # AI Job Matcher (Feature 7)
+    st.markdown('<div class="section-header">💼 AI Job Role Matcher</div>', unsafe_allow_html=True)
+    role_cols = st.columns(3)
+    for i, role in enumerate(data["job_roles"][:3]):
+        with role_cols[i]:
+            st.markdown(f"""
+            <div class="glass-card" style="text-align:center; padding:1.5rem; border-color:#22D3EE;">
+              <div style="font-size:0.8rem; color:#22D3EE; font-weight:700;">#{i+1} RECOMMENDATION</div>
+              <div style="font-size:1.1rem; font-weight:700; color:#FFFFFF; margin-top:0.5rem;">{role}</div>
+            </div>
+            """, unsafe_allow_html=True)
+    
+    st.divider()
+
     # Career Arc Visualizer (Feature 3)
     st.markdown('<div class="section-header">📈 Career Evolution Timeline</div>', unsafe_allow_html=True)
     if data["arc_viz"]:
@@ -643,6 +716,17 @@ else:
         with c_b:
             for tip in q["top_tips"]:
                 st.markdown(f'<div style="font-size:0.85rem; color:#FFFFFF; margin-bottom:0.4rem;">💡 {tip}</div>', unsafe_allow_html=True)
+            
+            # AI REWRITER (Feature 8)
+            if data["rewrites"]:
+                with st.expander("✨ AI Suggested Rewrites"):
+                    for rw in data["rewrites"]:
+                        st.markdown(f"""
+                        <div style="font-size:0.8rem; margin-bottom:0.5rem; padding:0.5rem; border-left:2px solid #6C63FF; background:rgba(108,99,255,0.05);">
+                          <div style="color:#94A3B8;"><s>{rw['old']}</s></div>
+                          <div style="color:#6C63FF; font-weight:600;">→ {rw['new']}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
     with col_nlp:
         st.markdown('<div class="section-header">🧠 NLP Insights</div>', unsafe_allow_html=True)
@@ -658,6 +742,20 @@ else:
         </div>
         """, unsafe_allow_html=True)
         _render_topics(topics)
+        
+        # AI REVIEW PERSONALITY (Feature 6)
+        st.markdown('<div class="section-header" style="margin-top:1.5rem;">🎭 Review Personality</div>', unsafe_allow_html=True)
+        rp = data["review_personality"]
+        st.markdown(f"""
+        <div class="glass-card">
+          <div style="font-size:0.8rem; color:#CBD5E1;">ARCHETYPE</div>
+          <div style="font-size:1.4rem; font-weight:700; color:#F9A826;">{rp['archetype']}</div>
+          <div style="font-size:0.9rem; color:#FFFFFF; margin-top:0.4rem;"><b>Trait:</b> {rp['trait']}</div>
+          <div style="font-size:0.85rem; color:#E2E8F0; margin-top:0.8rem; border-top:1px solid rgba(255,255,255,0.1); padding-top:0.5rem;">
+            <b>AI Advice:</b> {rp['advice']}
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
 
     # REPO HEALTH DASHBOARD
     st.divider()
@@ -693,6 +791,47 @@ else:
             </div>
             """, unsafe_allow_html=True)
 
+
+    # DEEP DATA METRICS SECTION
+    st.divider()
+    col_bus, col_ghost = st.columns(2, gap="large")
+    
+    with col_bus:
+        st.markdown('<div class="section-header">🚌 Bus Factor Estimation</div>', unsafe_allow_html=True)
+        bus = data["bus_stats"]
+        st.markdown(f"""
+        <div class="glass-card" style="padding:1.5rem;">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-size:0.8rem; color:#CBD5E1;">CENTRALIZATION RISK</div>
+              <div style="font-size:1.5rem; font-weight:700;">{bus['risk']}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:2rem; font-weight:800; color:#6C63FF;">{bus['avg_factor']}</div>
+              <div style="font-size:0.7rem; color:#E2E8F0;">AVG RATIO</div>
+            </div>
+          </div>
+          <div style="margin-top:1rem; font-size:0.85rem; color:#E2E8F0;">
+            A factor of 1 means you are the sole knowledge holder. Projects with high stars and low factors are 'knowledge silos'.
+          </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col_ghost:
+        st.markdown('<div class="section-header">👻 Ghost Repo Audit</div>', unsafe_allow_html=True)
+        if data["ghosts"]:
+            for g in data["ghosts"][:3]:
+                st.markdown(f"""
+                <div style="display:flex; justify-content:space-between; padding:0.6rem; border-bottom:1px solid rgba(255,255,255,0.05);">
+                  <div style="font-size:0.85rem; font-weight:600; color:#FFFFFF;">{g['name']}</div>
+                  <div style="font-size:0.75rem; color:#94A3B8;">Last active: {g['last_updated']}</div>
+                </div>
+                """, unsafe_allow_html=True)
+            st.warning("Found repositories with no activity for 1+ year. Consider archiving them.")
+        else:
+            st.success("All analyzed repositories have been active within the last year!")
+
+    st.divider()
 
     # Time Capsule (Feature 13)
     st.markdown(f"""

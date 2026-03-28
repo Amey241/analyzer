@@ -198,6 +198,8 @@ class GitHubFetcher:
                 "has_tests": has_tests,
                 "recently_active": recently_active,
                 "low_open_issues": low_open_issues,
+                "contributor_count": int(repo.get_contributors().totalCount),
+                "user_contribution_count": sum(1 for c in repo_commits if c.get("author") == username),
             })
 
         # ---- issues & PRs authored & reviews ----

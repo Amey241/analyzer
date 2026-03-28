@@ -11,3 +11,4 @@ nltk
 PyGithub
 pillow
 pyvis
+anthropic
