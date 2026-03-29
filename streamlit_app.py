@@ -272,8 +272,9 @@ st.markdown("""
   button[kind="header"],
   [data-testid="collapsedControl"] {
     position: fixed !important;
-    top: 0.85rem !important;
+    top: 50vh !important;
     left: 0.85rem !important;
+    transform: translateY(-50%) !important;
     z-index: 999999 !important;
     display: flex !important;
     visibility: visible !important;
