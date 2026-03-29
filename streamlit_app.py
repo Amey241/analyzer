@@ -33,10 +33,12 @@ st.markdown("""
     color: #FFFFFF;
   }
 
-  div[data-testid="stAppViewBlockContainer"] {
-    padding-top: 4.5rem;
-    padding-left: 2rem;
-    padding-right: 2rem;
+  .block-container,
+  div[data-testid="stAppViewBlockContainer"],
+  div[data-testid="stMainBlockContainer"] {
+    padding-top: 6rem !important;
+    padding-left: 2rem !important;
+    padding-right: 2rem !important;
   }
 
   section[data-testid="stSidebar"] {
@@ -211,14 +213,17 @@ st.markdown("""
   /* Remove Streamlit white header bar */
   header[data-testid="stHeader"], 
   .stAppHeader {
-    background: transparent !important;
+    background: rgba(15, 12, 41, 0.92) !important;
+    backdrop-filter: blur(10px);
   }
 
   @media (max-width: 768px) {
-    div[data-testid="stAppViewBlockContainer"] {
-      padding-top: 5rem;
-      padding-left: 1rem;
-      padding-right: 1rem;
+    .block-container,
+    div[data-testid="stAppViewBlockContainer"],
+    div[data-testid="stMainBlockContainer"] {
+      padding-top: 6.5rem !important;
+      padding-left: 1rem !important;
+      padding-right: 1rem !important;
     }
 
     .profile-header {
