@@ -195,7 +195,7 @@ st.markdown("""
     font-size: 1.2rem; font-weight: 800; color: #FFFFFF;
   }
 
-  #MainMenu, footer { visibility: hidden; }
+  footer { visibility: hidden; }
 
   input[type=text], .stTextInput input {
     background: rgba(0, 0, 0, 0.5) !important;
@@ -253,37 +253,6 @@ st.markdown("""
     color: #FFFFFF !important;
   }
 
-  /* Keep Streamlit's sidebar toggle available, but hide the rest of the top chrome */
-  header[data-testid="stHeader"],
-  .stAppHeader {
-    background: transparent !important;
-    height: 0 !important;
-    min-height: 0 !important;
-  }
-
-  div[data-testid="stToolbar"],
-  div[data-testid="stDecoration"],
-  div[data-testid="stStatusWidget"],
-  #MainMenu {
-    display: none !important;
-    visibility: hidden !important;
-  }
-
-  button[kind="header"],
-  [data-testid="collapsedControl"] {
-    position: fixed !important;
-    top: 20.5rem !important;
-    left: calc(50% - 620px) !important;
-    transform: translateY(-50%) !important;
-    z-index: 999999 !important;
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    background: rgba(26, 16, 64, 0.92) !important;
-    border: 1px solid rgba(255,255,255,0.12) !important;
-    border-radius: 10px !important;
-  }
-
   @media (max-width: 768px) {
     .block-container,
     div[data-testid="stAppViewBlockContainer"],
@@ -302,11 +271,6 @@ st.markdown("""
       padding-top: 0;
     }
 
-    button[kind="header"],
-    [data-testid="collapsedControl"] {
-      top: 10.5rem !important;
-      left: 0.5rem !important;
-    }
   }
 </style>
 """, unsafe_allow_html=True)
