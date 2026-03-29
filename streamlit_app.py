@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="GitHub Profile Analyzer",
     page_icon="🔭",
     layout="wide",
-    initial_sidebar_state="expanded",
+    initial_sidebar_state="collapsed",
 )
 
 # ------------------------------------------------------------------ #
@@ -498,6 +498,9 @@ with st.sidebar:
         show_rate_limit(fetcher if 'fetcher' in locals() else globals().get('fetcher'))
     
     st.divider()
+    mode = st.radio("Analysis Mode", ["Single Profile", "Compare Mode"], index=0)
+
+    st.divider()
     st.markdown("**How to use**")
     if configured_token:
         st.markdown("""
@@ -532,13 +535,6 @@ st.markdown("""
   </p>
 </div>
 """, unsafe_allow_html=True)
-
-mode = st.radio(
-    "Analysis Mode",
-    ["Single Profile", "Compare Mode"],
-    index=0,
-    horizontal=True,
-)
 
 if mode == "Single Profile":
     username = st.text_input(
