@@ -253,12 +253,34 @@ st.markdown("""
     color: #FFFFFF !important;
   }
 
-  /* Hide Streamlit top toolbar/header in deployment */
-  header[data-testid="stHeader"], 
+  /* Keep Streamlit's sidebar toggle available, but hide the rest of the top chrome */
+  header[data-testid="stHeader"],
   .stAppHeader {
+    background: transparent !important;
+    height: 0 !important;
+    min-height: 0 !important;
+  }
+
+  div[data-testid="stToolbar"],
+  div[data-testid="stDecoration"],
+  div[data-testid="stStatusWidget"],
+  #MainMenu {
     display: none !important;
     visibility: hidden !important;
-    height: 0 !important;
+  }
+
+  button[kind="header"],
+  [data-testid="collapsedControl"] {
+    position: fixed !important;
+    top: 0.85rem !important;
+    left: 0.85rem !important;
+    z-index: 999999 !important;
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    background: rgba(26, 16, 64, 0.92) !important;
+    border: 1px solid rgba(255,255,255,0.12) !important;
+    border-radius: 10px !important;
   }
 
   @media (max-width: 768px) {
