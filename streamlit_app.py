@@ -272,8 +272,8 @@ st.markdown("""
   button[kind="header"],
   [data-testid="collapsedControl"] {
     position: fixed !important;
-    top: 50vh !important;
-    left: 0.85rem !important;
+    top: 20.5rem !important;
+    left: calc(50% - 620px) !important;
     transform: translateY(-50%) !important;
     z-index: 999999 !important;
     display: flex !important;
@@ -300,6 +300,12 @@ st.markdown("""
 
     .profile-actions {
       padding-top: 0;
+    }
+
+    button[kind="header"],
+    [data-testid="collapsedControl"] {
+      top: 10.5rem !important;
+      left: 0.5rem !important;
     }
   }
 </style>
