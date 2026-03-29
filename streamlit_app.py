@@ -16,7 +16,7 @@ st.set_page_config(
     page_title="GitHub Profile Analyzer",
     page_icon="🔭",
     layout="wide",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
 )
 
 # ------------------------------------------------------------------ #
@@ -36,7 +36,7 @@ st.markdown("""
   .block-container,
   div[data-testid="stAppViewBlockContainer"],
   div[data-testid="stMainBlockContainer"] {
-    padding-top: 6rem !important;
+    padding-top: 4.5rem !important;
     padding-left: 2rem !important;
     padding-right: 2rem !important;
   }
@@ -45,6 +45,12 @@ st.markdown("""
     background: #1a1040 !important;
     border-right: 1px solid rgba(255,255,255,0.15);
     backdrop-filter: blur(20px);
+  }
+
+  section[data-testid="stSidebar"] .block-container {
+    padding-top: 1.2rem !important;
+    padding-left: 1.2rem !important;
+    padding-right: 1.2rem !important;
   }
 
   .glass-card {
@@ -66,6 +72,38 @@ st.markdown("""
     border: 1px solid rgba(108,99,255,0.3);
     border-radius: 20px;
     margin-bottom: 1.5rem;
+  }
+
+  .hero-wrap {
+    max-width: 1100px;
+    margin: 0 auto 1.25rem auto;
+  }
+
+  .hero-title {
+    text-align: center;
+    padding: 1rem 0 1rem;
+  }
+
+  .hero-input-wrap {
+    max-width: 100%;
+    margin: 0 auto 1rem auto;
+  }
+
+  .status-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.95rem 1.15rem;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(255,255,255,0.03);
+    color: #FFFFFF;
+    font-weight: 700;
+    margin-bottom: 1.25rem;
+  }
+
+  .profile-actions {
+    padding-top: 2rem;
   }
   .profile-header img {
     width: 90px; height: 90px;
@@ -227,7 +265,7 @@ st.markdown("""
     .block-container,
     div[data-testid="stAppViewBlockContainer"],
     div[data-testid="stMainBlockContainer"] {
-      padding-top: 6.5rem !important;
+      padding-top: 4rem !important;
       padding-left: 1rem !important;
       padding-right: 1rem !important;
     }
@@ -235,6 +273,10 @@ st.markdown("""
     .profile-header {
       flex-direction: column;
       text-align: center;
+    }
+
+    .profile-actions {
+      padding-top: 0;
     }
   }
 </style>
@@ -328,94 +370,88 @@ def run_pipeline(username: str, _token_override: str = "") -> dict:
     token = (_token_override or get_configured_github_token()).strip()
     fetcher = GitHubFetcher(token)
 
-    # Pipeline Execution with Progress Tracking
-    with st.status("🔍 Analyzing GitHub Profile...") as status:
-        status.update(label="📡 Fetching repository & commit data...", state="running")
-        raw = fetcher.get_user_data(username)
-        
-        # Process data for local analysis
-        commits = raw["commits"]
-        lang_df = aggregate_languages(raw["lang_totals"])
-        
-        # Analytical Calls (Synced with module names)
-        heatmap_pivot = build_heatmap_data(commits)
-        activity      = peak_hours_summary(heatmap_pivot)
-        sentiment     = sentiment_analysis([c["message"] for c in commits])
-        topics        = lda_topics([c["message"] for c in commits])
-        
-        # Wordcloud (proper arg)
-        wc_path = generate_wordcloud([c["message"] for c in commits])
-        
-        # Commit Quality (synced name)
-        quality = score_commits([c["message"] for c in commits])
-        
-        # Repo Health (manual loop + aggregate)
-        repo_scores = [score_repo(r) for r in raw["repos"]]
-        health_stats = aggregate_health(repo_scores)
-        
-        # User Stats for Personality/Narrative/Achievements
-        user_stats = {
-            "commit_hours":   [c["hour"] for c in commits],
-            "commit_weekdays": [c["weekday"] for c in commits],
-            "repos":          raw["repos"],
-            "dominant_topic": topics["dominant_topic"],
-            "avg_sentiment":  sentiment["avg_polarity"],
-            "prs_authored":   raw["prs_authored"],
+    raw = fetcher.get_user_data(username)
+    
+    # Process data for local analysis
+    commits = raw["commits"]
+    lang_df = aggregate_languages(raw["lang_totals"])
+    
+    # Analytical Calls (Synced with module names)
+    heatmap_pivot = build_heatmap_data(commits)
+    activity      = peak_hours_summary(heatmap_pivot)
+    sentiment     = sentiment_analysis([c["message"] for c in commits])
+    topics        = lda_topics([c["message"] for c in commits])
+    
+    # Wordcloud (proper arg)
+    wc_path = generate_wordcloud([c["message"] for c in commits])
+    
+    # Commit Quality (synced name)
+    quality = score_commits([c["message"] for c in commits])
+    
+    # Repo Health (manual loop + aggregate)
+    repo_scores = [score_repo(r) for r in raw["repos"]]
+    health_stats = aggregate_health(repo_scores)
+    
+    # User Stats for Personality/Narrative/Achievements
+    user_stats = {
+        "commit_hours":   [c["hour"] for c in commits],
+        "commit_weekdays": [c["weekday"] for c in commits],
+        "repos":          raw["repos"],
+        "dominant_topic": topics["dominant_topic"],
+        "avg_sentiment":  sentiment["avg_polarity"],
+        "prs_authored":   raw["prs_authored"],
+        "issues_authored": raw["issues_authored"],
+        "followers":       raw["profile"].get("followers", 0),
+    }
+    badges = classify(user_stats)
+    narrative = generate_narrative(user_stats, raw["profile"])
+    achievements = achievement_trophy_case(user_stats, raw["profile"], lang_df)
+
+    # Deep Style Audit & Code DNA (Extracted from unified fetch)
+    try:
+        code_samples = raw.get("all_samples", [])
+        dna_traits = analyze_style(code_samples)
+        dna_svg = generate_dna_svg(dna_traits)
+    except Exception:
+        dna_traits, dna_svg = {}, ""
+
+    # Collaboration & Ecosystem (Extracted from unified fetch)
+    try:
+        repo_deps = raw.get("all_deps", {})
+        ecosystem_html = build_ecosystem_graph(repo_deps)
+    except Exception:
+        repo_deps, ecosystem_html = {}, ""
+
+    try:
+        ai = AIInsights()
+        job_roles = ai.get_job_role_suggestions(user_stats, lang_df)
+        review_comments = fetcher.get_review_comments(username)
+        review_personality = ai.analyze_review_personality(review_comments)
+        low_q_commits = [m for m, s, g in quality.get("worst_examples", [])[:3]]
+        rewrites = ai.suggest_commit_rewrites(low_q_commits)
+    except Exception:
+        job_roles, review_personality, rewrites = [], {"archetype": "The Observer", "trait": "Neutral", "advice": ""}, []
+
+    # Deep Metrics
+    try:
+        bus_stats = estimate_bus_factor(raw["repos"])
+        streak_stats = calculate_streaks(commits)
+        arc_df = analyze_career_arc(commits)
+        arc_viz = career_arc_timeline(arc_df)
+        capsule = time_capsule_message(arc_df, raw["profile"])
+        invisible_stats = invisible_work_audit({
+            "prs_authored": raw["prs_authored"],
             "issues_authored": raw["issues_authored"],
-            "followers":       raw["profile"].get("followers", 0),
-        }
-        badges = classify(user_stats)
-        narrative = generate_narrative(user_stats, raw["profile"])
-        achievements = achievement_trophy_case(user_stats, raw["profile"], lang_df)
-
-        # Deep Style Audit & Code DNA (Extracted from unified fetch)
-        try:
-            code_samples = raw.get("all_samples", [])
-            dna_traits = analyze_style(code_samples)
-            dna_svg = generate_dna_svg(dna_traits)
-        except Exception:
-            dna_traits, dna_svg = {}, ""
-
-        # Collaboration & Ecosystem (Extracted from unified fetch)
-        try:
-            repo_deps = raw.get("all_deps", {})
-            ecosystem_html = build_ecosystem_graph(repo_deps)
-        except Exception:
-            repo_deps, ecosystem_html = {}, ""
-
-        status.update(label="🎨 Generating AI Insights...", state="running")
-        try:
-            ai = AIInsights()
-            job_roles = ai.get_job_role_suggestions(user_stats, lang_df)
-            review_comments = fetcher.get_review_comments(username)
-            review_personality = ai.analyze_review_personality(review_comments)
-            low_q_commits = [m for m, s, g in quality.get("worst_examples", [])[:3]]
-            rewrites = ai.suggest_commit_rewrites(low_q_commits)
-        except Exception:
-            job_roles, review_personality, rewrites = [], {"archetype": "The Observer", "trait": "Neutral", "advice": ""}, []
-
-        # Deep Metrics
-        try:
-            bus_stats = estimate_bus_factor(raw["repos"])
-            streak_stats = calculate_streaks(commits)
-            arc_df = analyze_career_arc(commits)
-            arc_viz = career_arc_timeline(arc_df)
-            capsule = time_capsule_message(arc_df, raw["profile"])
-            invisible_stats = invisible_work_audit({
-                "prs_authored": raw["prs_authored"],
-                "issues_authored": raw["issues_authored"],
-                "pr_reviews_count": raw.get("pr_reviews_count", 0),
-                "issue_comments_count": raw.get("issue_comments_count", 0),
-            })
-            ghosts = ghost_repo_audit(raw["repos"])
-        except Exception:
-            bus_stats = {"factors": [], "avg_factor": 0, "risk": "Unknown"}
-            streak_stats = {"current": 0, "longest": 0}
-            arc_df, arc_viz, capsule = pd.DataFrame(), None, ""
-            invisible_stats = {"prs": 0, "issues": 0, "reviews": 0, "issue_comments": 0, "total_impact": 0, "invisible_pct": 0, "is_empty": True}
-            ghosts = []
-
-        status.update(label="✅ Analysis Complete!", state="complete")
+            "pr_reviews_count": raw.get("pr_reviews_count", 0),
+            "issue_comments_count": raw.get("issue_comments_count", 0),
+        })
+        ghosts = ghost_repo_audit(raw["repos"])
+    except Exception:
+        bus_stats = {"factors": [], "avg_factor": 0, "risk": "Unknown"}
+        streak_stats = {"current": 0, "longest": 0}
+        arc_df, arc_viz, capsule = pd.DataFrame(), None, ""
+        invisible_stats = {"prs": 0, "issues": 0, "reviews": 0, "issue_comments": 0, "total_impact": 0, "invisible_pct": 0, "is_empty": True}
+        ghosts = []
 
     return {
         "profile": raw["profile"],
@@ -523,7 +559,8 @@ with st.sidebar:
 #  Main header
 # ------------------------------------------------------------------ #
 st.markdown("""
-<div style="text-align:center; padding: 1.5rem 0 1rem;">
+<div class="hero-wrap">
+  <div class="hero-title">
   <span style="font-size:2.5rem; font-weight:800;
     background: linear-gradient(90deg, #6C63FF, #EC4899, #F9A826);
     -webkit-background-clip:text; -webkit-text-fill-color:transparent;
@@ -533,9 +570,11 @@ st.markdown("""
   <p style="color:#94A3B8; margin-top:0.4rem; font-size:0.95rem;">
     Data-driven personality insights from commit history
   </p>
+  </div>
 </div>
 """, unsafe_allow_html=True)
 
+st.markdown('<div class="hero-wrap hero-input-wrap">', unsafe_allow_html=True)
 if mode == "Single Profile":
     username = st.text_input(
         "GitHub Username",
@@ -549,6 +588,7 @@ else:
     with c2:
         u2 = st.text_input("Second Developer", placeholder="e.g. gvanrossum")
     username = (u1, u2) if (u1 and u2) else None
+st.markdown('</div>', unsafe_allow_html=True)
 
 active_token = configured_token or token
 
@@ -667,7 +707,9 @@ else:
     health_stats  = data["health_stats"]
 
     # Header with Card Generator
-    c1, c2 = st.columns([3, 1])
+    st.markdown('<div class="hero-wrap"><div class="status-banner">✓ <span>✅ Analysis Complete!</span></div></div>', unsafe_allow_html=True)
+
+    c1, c2 = st.columns([4, 1.4], gap="large")
     with c1:
         st.markdown(f"""
         <div class="profile-header">
@@ -702,7 +744,7 @@ else:
         </div>
         """, unsafe_allow_html=True)
     with c2:
-        st.markdown('<div style="height:25px;"></div>', unsafe_allow_html=True)
+        st.markdown('<div class="profile-actions"></div>', unsafe_allow_html=True)
         card_bytes = generate_card(profile, badges, lang_df, sentiment, commits, profile["login"])
         st.download_button(
             label="🎨 Download Wrapped Card",
