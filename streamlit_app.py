@@ -210,11 +210,12 @@ st.markdown("""
     color: #FFFFFF !important;
   }
 
-  /* Remove Streamlit white header bar */
+  /* Hide Streamlit top toolbar/header in deployment */
   header[data-testid="stHeader"], 
   .stAppHeader {
-    background: rgba(15, 12, 41, 0.92) !important;
-    backdrop-filter: blur(10px);
+    display: none !important;
+    visibility: hidden !important;
+    height: 0 !important;
   }
 
   @media (max-width: 768px) {
