@@ -133,6 +133,11 @@ st.markdown("""
     font-weight: 600;
   }
 
+  div[data-testid="stRadio"] label p {
+    color: #FFFFFF !important;
+    font-weight: 600 !important;
+  }
+
   /* Repo Health Pills */
   .health-pill {
     padding: 0.1rem 0.5rem;
@@ -493,9 +498,6 @@ with st.sidebar:
         show_rate_limit(fetcher if 'fetcher' in locals() else globals().get('fetcher'))
     
     st.divider()
-    mode = st.radio("Analysis Mode", ["Single Profile", "Compare Mode"], index=0)
-    
-    st.divider()
     st.markdown("**How to use**")
     if configured_token:
         st.markdown("""
@@ -530,6 +532,13 @@ st.markdown("""
   </p>
 </div>
 """, unsafe_allow_html=True)
+
+mode = st.radio(
+    "Analysis Mode",
+    ["Single Profile", "Compare Mode"],
+    index=0,
+    horizontal=True,
+)
 
 if mode == "Single Profile":
     username = st.text_input(
