@@ -33,6 +33,12 @@ st.markdown("""
     color: #FFFFFF;
   }
 
+  div[data-testid="stAppViewBlockContainer"] {
+    padding-top: 4.5rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+  }
+
   section[data-testid="stSidebar"] {
     background: #1a1040 !important;
     border-right: 1px solid rgba(255,255,255,0.15);
@@ -206,6 +212,19 @@ st.markdown("""
   header[data-testid="stHeader"], 
   .stAppHeader {
     background: transparent !important;
+  }
+
+  @media (max-width: 768px) {
+    div[data-testid="stAppViewBlockContainer"] {
+      padding-top: 5rem;
+      padding-left: 1rem;
+      padding-right: 1rem;
+    }
+
+    .profile-header {
+      flex-direction: column;
+      text-align: center;
+    }
   }
 </style>
 """, unsafe_allow_html=True)
